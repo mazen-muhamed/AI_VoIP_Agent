@@ -1,0 +1,14 @@
+fastapi>=0.118.0
+uvicorn[standard]>=0.35.0
+sqlalchemy[asyncio]>=2.0.43
+asyncpg>=0.31.0
+pydantic[email]>=2.12.0
+pydantic-settings>=2.10.0
+pyjwt>=2.10.1
+passlib[bcrypt]>=1.7.4
+bcrypt>=4.0.1,<4.1  # passlib 1.7.4 breaks on bcrypt>=4.1; drop passlib later (debt)
+aiosqlite>=0.20.0  # test-only: SQLite async driver
+alembic>=1.16.0
+httpx>=0.28.1
+pytest>=8.3.5
+pytest-asyncio>=1.0.0
