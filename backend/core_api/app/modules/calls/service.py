@@ -13,18 +13,25 @@ class CallsService:
     async def process_event(self, event: CallEventCreate) -> Call:
         self._validate_event(event)
 
+        started_at = self._to_utc(event.started_at)
+        answered_at = self._to_utc(event.answered_at)
+        ended_at = self._to_utc(event.ended_at)
+
         wait_seconds = self._calculate_wait_seconds(
-            event.started_at,
-            event.answered_at,
+            started_at,
+            answered_at,
         )
 
         talk_seconds = self._calculate_talk_seconds(
-            event.answered_at,
-            event.ended_at,
+            answered_at,
+            ended_at,
         )
 
         data = event.model_dump()
 
+        data["started_at"] = started_at
+        data["answered_at"] = answered_at
+        data["ended_at"] = ended_at
         data["wait_seconds"] = wait_seconds
         data["talk_seconds"] = talk_seconds
 
@@ -44,6 +51,12 @@ class CallsService:
 
         if value.tzinfo is None or value.utcoffset() is None:
             raise ValueError("timestamps must be timezone-aware")
+
+    def _to_utc(self, value: Optional[datetime]) -> Optional[datetime]:
+        if value is None:
+            return None
+
+        return value.astimezone(timezone.utc)
 
     def _calculate_wait_seconds(
         self,

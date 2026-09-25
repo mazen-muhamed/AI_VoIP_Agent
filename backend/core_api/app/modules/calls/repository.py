@@ -1,8 +1,8 @@
-from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.calls.models import Call
@@ -35,15 +35,21 @@ class CallsRepository:
         return call
 
     async def upsert(self, data: dict) -> Call:
-        call_uuid = data["call_uuid"]
+        stmt = insert(Call).values(**data)
 
-        existing_call = await self.get_by_call_uuid(call_uuid)
+        update_data = {
+            key: value
+            for key, value in data.items()
+            if key not in {"id", "call_uuid", "created_at"}
+        }
 
-        if existing_call:
-            return await self.update(existing_call, data)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=[Call.call_uuid],
+            set_=update_data,
+        ).returning(Call)
 
-        call = Call(**data)
-        return await self.create(call)
+        result = await self.db.execute(stmt)
+        return result.scalar_one()
 
     async def delete(self, call: Call) -> None:
         await self.db.delete(call)
