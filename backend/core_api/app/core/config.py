@@ -19,6 +19,7 @@ class Settings(BaseSettings):
 ## From .env file 'Security'
     
     JWT_SECRET: str
+    CALLS_INGEST_API_KEY: str
     JWT_AlGORITHM: str = 'HS256'
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 10
