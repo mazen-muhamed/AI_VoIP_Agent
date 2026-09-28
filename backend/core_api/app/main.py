@@ -5,7 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.modules.auth.router import router as auth_router
 from app.routers.health import router as health_router
-
+from app.modules.calls.router import router as calls_router
+from app.modules.dashboard.router import router as dashboard_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
@@ -33,6 +34,8 @@ def create_app() -> FastAPI:
 
     app.include_router(health_router)
     app.include_router(auth_router)
+    app.include_router(calls_router, prefix="/api/v1",)
+    app.include_router(dashboard_router, prefix="/api/v1",)
 
     return app
 

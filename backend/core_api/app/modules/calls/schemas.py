@@ -1,17 +1,29 @@
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
-
+from enum import Enum
 from pydantic import BaseModel, Field
+
+class CallDirection(str, Enum):
+    inbound = "inbound"
+    outbound = "outbound"
+
+
+class CallStatus(str, Enum):
+    initiated = "initiated"
+    in_progress = "in_progress"
+    completed = "completed"
+    failed = "failed"
+    abandoned = "abandoned"
 
 
 class CallEventCreate(BaseModel):
     tenant_id: UUID
     call_uuid: str = Field(min_length=1, max_length=255)
-    direction: str
+    direction: CallDirection
     from_number: str
     to_number: str
-    status: str
+    status: CallStatus
     started_at: datetime
     answered_at: Optional[datetime] = None
     ended_at: Optional[datetime] = None

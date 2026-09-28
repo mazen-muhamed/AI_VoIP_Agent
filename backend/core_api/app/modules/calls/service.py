@@ -1,6 +1,5 @@
 from datetime import datetime, timezone
 from typing import Optional
-
 from app.modules.calls.models import Call
 from app.modules.calls.repository import CallsRepository
 from app.modules.calls.schemas import CallEventCreate
@@ -42,8 +41,13 @@ class CallsService:
         self._validate_timestamp(event.answered_at)
         self._validate_timestamp(event.ended_at)
 
+        # CSAT score requires a collected response
         if event.csat_score is not None and not event.csat_collected:
             raise ValueError("csat_score requires csat_collected=true")
+
+        # A collected CSAT response must contain a score
+        if event.csat_collected and event.csat_score is None:
+            raise ValueError("csat_collected requires csat_score")
 
     def _validate_timestamp(self, value: Optional[datetime]) -> None:
         if value is None:
@@ -58,21 +62,13 @@ class CallsService:
 
         return value.astimezone(timezone.utc)
 
-    def _calculate_wait_seconds(
-        self,
-        started_at: datetime,
-        answered_at: Optional[datetime],
-    ) -> Optional[int]:
+    def _calculate_wait_seconds(self, started_at: datetime, answered_at: Optional[datetime],) -> Optional[int]:
         if answered_at is None:
             return None
 
         return max(0, int((answered_at - started_at).total_seconds()))
 
-    def _calculate_talk_seconds(
-        self,
-        answered_at: Optional[datetime],
-        ended_at: Optional[datetime],
-    ) -> Optional[int]:
+    def _calculate_talk_seconds(self, answered_at: Optional[datetime], ended_at: Optional[datetime],) -> Optional[int]:
         if answered_at is None or ended_at is None:
             return None
 

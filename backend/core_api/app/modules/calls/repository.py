@@ -1,10 +1,8 @@
 from typing import Optional
 from uuid import UUID
-
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.modules.calls.models import Call
 
 
@@ -40,7 +38,7 @@ class CallsRepository:
         update_data = {
             key: value
             for key, value in data.items()
-            if key not in {"id", "call_uuid", "created_at"}
+            if key not in {"id", "call_uuid", "tenant_id", "created_at"}
         }
 
         stmt = stmt.on_conflict_do_update(
