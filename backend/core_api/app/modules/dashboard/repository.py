@@ -22,9 +22,6 @@ class DashboardRepository:
             .filter(Call.answered_at.is_not(None))
             .label("answered"),
             func.count(Call.id)
-            .filter(Call.status == "in_progress")
-            .label("active_calls"),
-            func.count(Call.id)
             .filter(Call.transferred_to_human.is_(True))
             .label("transfer_count"),
             func.count(Call.id)
@@ -45,6 +42,14 @@ class DashboardRepository:
                 Call.csat_score >= 4,
             )
             .label("positive_csat_count"),
+            func.avg(Call.wait_seconds)
+            .filter(Call.wait_seconds.is_not(None))
+            .label("avg_wait_seconds"),
+
+            func.percentile_cont(0.95)
+            .within_group(Call.wait_seconds)
+            .filter(Call.wait_seconds.is_not(None))
+            .label("p95_wait_seconds"),
         ).where(
             Call.tenant_id == tenant_id,
             Call.started_at >= start_at,
@@ -54,6 +59,14 @@ class DashboardRepository:
         result = await self.db.execute(stmt)
         return result.one()
 
+    async def get_active_calls(self, tenant_id: UUID) -> int:
+        stmt = select(func.count(Call.id)).where(
+            Call.tenant_id == tenant_id,
+            Call.status == "in_progress",
+        )
+
+        result = await self.db.execute(stmt)
+        return result.scalar_one()
     # Get service-level numerator and denominator
     async def get_service_level(
         self,
@@ -87,15 +100,16 @@ class DashboardRepository:
 
     # Get paginated calls with optional filters
     async def get_calls(
-        self,
-        tenant_id: UUID,
-        start_at: datetime | None = None,
-        end_at: datetime | None = None,
-        status: str | None = None,
-        transferred: bool | None = None,
-        csat_given: bool | None = None,
-        page: int = 1,
-        page_size: int = 20,
+            self,
+            tenant_id: UUID,
+            start_at: datetime | None = None,
+            end_at: datetime | None = None,
+            status: str | None = None,
+            direction: str | None = None,
+            transferred: bool | None = None,
+            search: str | None = None,
+            page: int = 1,
+            page_size: int = 20,
     ):
         conditions = [Call.tenant_id == tenant_id]
 
@@ -108,11 +122,14 @@ class DashboardRepository:
         if status is not None:
             conditions.append(Call.status == status)
 
+        if direction is not None:
+            conditions.append(Call.direction == direction)
+
         if transferred is not None:
             conditions.append(Call.transferred_to_human == transferred)
 
-        if csat_given is not None:
-            conditions.append(Call.csat_collected == csat_given)
+        if search:
+            conditions.append(Call.from_number.startswith(search))
 
         # Count total matching calls
         total_stmt = select(func.count(Call.id)).where(*conditions)

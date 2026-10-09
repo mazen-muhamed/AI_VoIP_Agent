@@ -34,6 +34,9 @@ class CallEventCreate(BaseModel):
     csat_score: Optional[int] = Field(default=None, ge=1, le=5)
     csat_collected: bool = False
 
+class CallEventResponse(BaseModel):
+    call_uuid: str
+    created: bool
 
 class CallResponse(BaseModel):
     id: UUID

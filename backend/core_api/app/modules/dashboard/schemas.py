@@ -1,53 +1,44 @@
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
-from pydantic import BaseModel, Field
 
+from pydantic import BaseModel, Field
+from app.modules.calls.schemas import CallResponse
+
+class SLA(BaseModel):
+    pct: float
+    target: int
+    answered_in_threshold: int
+    offered: int
+
+
+class Containment(BaseModel):
+    pct: float
+    ai_resolved: int
+    answered: int
 
 class DashboardOverviewResponse(BaseModel):
+    period: str
     total_calls: int
     answered: int
-    agents_avail: int
     active_calls: int
-    containment_rate: float
-    transfer_count: int
-    avg_csat: Optional[float]
-    csat_response_count: int
-    csat_rate: float
+    previous_period_total: int
+    avg_wait_seconds: float
+    p95_wait_seconds: float
+    sla: SLA
+    containment: Containment
 
 
-class DashboardCallResponse(BaseModel):
-    id: UUID
-    tenant_id: UUID
-    call_uuid: str
-    direction: str
-    from_number: str
-    to_number: str
-    status: str
-    started_at: datetime
-    answered_at: Optional[datetime]
-    ended_at: Optional[datetime]
-    wait_seconds: Optional[int]
-    talk_seconds: Optional[int]
-    hangup_cause: Optional[str]
-    transferred_to_human: bool
-    transfer_reason: Optional[str]
-    ai_resolved: bool
-    csat_score: Optional[int]
-    csat_collected: bool
-    created_at: datetime
-
-    model_config = {"from_attributes": True}
 
 
 class DashboardCallsResponse(BaseModel):
-    items: list[DashboardCallResponse]
+    items: list[CallResponse]
     page: int
     page_size: int = Field(le=100)
     total: int
 
 
 class ServiceLevelResponse(BaseModel):
-    ratio: float
-    numerator: int
-    denominator: int
+    period: str
+    sla: SLA
+    buckets: list
