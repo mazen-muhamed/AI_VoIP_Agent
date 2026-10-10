@@ -1,0 +1,7 @@
+faster-whisper
+chatterbox-tts
+anthropic
+sentence-transformers
+numpy
+torch
+torchaudio
