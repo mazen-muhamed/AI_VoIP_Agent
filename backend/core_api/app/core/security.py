@@ -23,7 +23,7 @@ class TokenPayload(BaseModel):
 
     sub: str  # user_id as string
     username: str
-    email[Optional]: str
+    email: Optional[str] = None
     roles: list[str] = []
     permissions: list[str] = []
     exp: int  # Unix timestamp 'RFC 7519'
