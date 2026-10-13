@@ -5,6 +5,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.modules.auth.router import router as auth_router
 from app.routers.health import router as health_router
+from app.modules.calls.router import router as calls_router
+from app.modules.dashboard.router import router as dashboard_router
+from fastapi.responses import JSONResponse
+from app.core.exceptions import AppError
 
 
 @asynccontextmanager
@@ -22,6 +26,16 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
 
     )
+    @app.exception_handler(AppError)
+    async def app_error_handler(request, exc: AppError):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "code": exc.code,
+                "message": str(exc),
+            },
+        )
+
 
     app.add_middleware(
         CORSMiddleware,
@@ -33,9 +47,10 @@ def create_app() -> FastAPI:
 
     app.include_router(health_router)
     app.include_router(auth_router)
+    app.include_router(calls_router, prefix=settings.API_V1_PREFIX,)
+    app.include_router(dashboard_router, prefix=settings.API_V1_PREFIX,)
 
     return app
 
 
 app = create_app()
-
