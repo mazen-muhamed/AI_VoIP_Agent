@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Header, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.exceptions import AuthenticationError
+from app.core.exceptions import UnauthorizedError, ForbiddenError
 from app.modules.auth.dependencies import (
     get_auth_service,
     get_current_active_user,
@@ -83,12 +83,12 @@ async def logout(
     refresh_token = request.refresh_token or x_refresh_token
 
     if not refresh_token:
-        raise AuthenticationError("Refresh token required!")
+        raise UnauthorizedError("Refresh token required!")
     
     ip = get_client_ip(req)
     success = await auth_service.logout(refresh_token, ip=ip)
     if not success:
-        raise AuthenticationError("Invalid refresh token")
+        raise UnauthorizedError("Invalid refresh token")
 
 @router.get('/me', response_model=UserResponse, summary="Get current user profile")
 async def get_me(

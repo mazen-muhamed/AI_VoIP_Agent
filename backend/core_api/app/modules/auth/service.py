@@ -51,9 +51,9 @@ class AuthService:
         self._login_attempts[ip] = [t for t in attempts if t > cutoff]
 
         if len(self._login_attempts[ip]) >= self._max_login_attempts:
-            raise exceptions.AuthenticationError(f"Too many login attempts. Try again in {self._rate_limit_window_seconds // 60} minutes.")
+            raise exceptions.UnauthorizedError(f"Too many login attempts. Try again in {self._rate_limit_window_seconds // 60} minutes.")
 
-    async def _record_login_attempts(self, ip: Optional[str], success: bool) -> None:
+    async def _record_login_attempt(self, ip: Optional[str], success: bool) -> None:
         if not ip:
             return
         now = time.time()
@@ -93,14 +93,14 @@ class AuthService:
                 "login_failed", None, username=username, ip=ip, details="User not found"
             )
             await self.db.commit()
-            raise exceptions.AuthenticationError("Invalid credentials")
+            raise exceptions.UnauthorizedError("Invalid credentials")
 
         if not user.is_active:
             await self._log_auth_event(
                 "login_failed", user.id, username=username, ip=ip, details="Account disabled"
             )
             await self.db.commit()
-            raise exceptions.AccountDisabledError()
+            raise exceptions.AccountDisabled()
 
         if not verify_password(password, user.hashed_password):
             await self._record_login_attempt(ip, success=False)
@@ -108,7 +108,7 @@ class AuthService:
                 "login_failed", user.id, username=username, ip=ip, details="Invalid password"
             )
             await self.db.commit()
-            raise exceptions.AuthenticationError("Invalid credentials")
+            raise exceptions.UnauthorizedError("Invalid credentials")
 
         await self._record_login_attempt(ip, success=True)
         return user
@@ -158,7 +158,7 @@ class AuthService:
                 "token_refresh_failed", None, username=None, email=None, ip=ip, details="Invalid or expired token"
             )
             await self.db.commit()
-            raise exceptions.AuthenticationError("Invalid or expired refresh token")
+            raise exceptions.UnauthorizedError("Invalid or expired refresh token")
 
 # Check if token family has been reused (theft detection)
         family_tokens = await self.repo.get_refresh_token_family(stored_token.family_id)
@@ -175,7 +175,7 @@ class AuthService:
                 details=f"Family {stored_token.family_id} reuse detected — all tokens revoked",
             )
             await self.db.commit()
-            raise exceptions.AuthenticationError(
+            raise exceptions.UnauthorizedError(
                 "Suspicious activity detected. Please log in again."
             )
 
@@ -190,7 +190,7 @@ class AuthService:
                 details="User disabled",
             )
             await self.db.commit()
-            raise exceptions.AccountDisabledError()
+            raise exceptions.AccountDisabled()
 
         # Rotate: revoke old, create new
         new_raw_refresh, new_refresh_hash, new_refresh_expires = create_refresh_token(
@@ -252,12 +252,12 @@ class AuthService:
         except ValueError as e:
             error_msg = str(e)
             if "expired" in error_msg.lower():
-                raise exceptions.TokenExpiredError()
-            raise exceptions.TokenInvalidError()
+                raise exceptions.TokenExpired()
+            raise exceptions.TokenInvalid()
 
         user = await self.repo.get_user_by_id(UUID(payload.sub))
         if not user or not user.is_active:
-            raise exceptions.AccountDisabledError()
+            raise exceptions.AccountDisabled()
 
         return user
 
@@ -348,7 +348,7 @@ class AuthService:
             raise exceptions.NotFoundError("User not found")
 
         if not verify_password(current_password, user.hashed_password):
-            raise exceptions.AuthenticationError("Current password is incorrect")
+            raise exceptions.UnauthorizedError("Current password is incorrect")
 
         user.hashed_password = hash_password(new_password)
         await self.db.commit()
