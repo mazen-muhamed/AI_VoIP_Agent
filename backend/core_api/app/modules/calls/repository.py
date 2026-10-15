@@ -3,6 +3,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.exceptions import ForbiddenError
 from app.modules.calls.models import Call
 
 
@@ -10,7 +11,7 @@ class CallsRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_by_call_uuid(self, call_uuid: str) -> Optional[Call]:
+    async def get_by_call_uuid(self, call_uuid: str,) -> Optional[Call]:
         stmt = select(Call).where(Call.call_uuid == call_uuid)
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
@@ -44,10 +45,16 @@ class CallsRepository:
         stmt = stmt.on_conflict_do_update(
             index_elements=[Call.call_uuid],
             set_=update_data,
+            where=Call.tenant_id == data["tenant_id"],
         ).returning(Call)
 
         result = await self.db.execute(stmt)
-        return result.scalar_one()
+        call = result.scalar_one_or_none()
+
+        if call is None:
+            raise ForbiddenError("Cannot update a call belonging to another tenant")
+
+        return call
 
     async def delete(self, call: Call) -> None:
         await self.db.delete(call)

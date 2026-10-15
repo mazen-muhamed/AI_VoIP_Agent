@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import Optional
+from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import ForbiddenError, NotFoundError, ValidationError
@@ -10,12 +11,18 @@ from app.modules.calls.schemas import CallEventCreate
 
 
 class CallsService:
-    def __init__(self,repository: CallsRepository, db: AsyncSession,):
+    def __init__(self, repository: CallsRepository, db: AsyncSession):
         self.repository = repository
         self.db = db
 
-    async def process_event(self, event: CallEventCreate,) -> tuple[Call, bool]:
+    async def process_event(self, event: CallEventCreate, allowed_tenant_id: UUID | None = None,) -> tuple[Call, bool]:
         self._validate_event(event)
+
+        if (
+            allowed_tenant_id is not None
+            and event.tenant_id != allowed_tenant_id
+        ):
+            raise ForbiddenError("Ingest key is not authorized for this tenant")
 
         tenant_result = await self.db.execute(select(Tenant).where(Tenant.id == event.tenant_id))
         tenant = tenant_result.scalar_one_or_none()
@@ -41,14 +48,12 @@ class CallsService:
                 started_at,
                 answered_at,
             )
-
             talk_seconds = self._calculate_talk_seconds(
                 answered_at,
                 ended_at,
             )
 
             data = event.model_dump()
-
             data["started_at"] = started_at
             data["answered_at"] = answered_at
             data["ended_at"] = ended_at
@@ -66,27 +71,25 @@ class CallsService:
             await self.db.rollback()
             raise
 
-    def _validate_event(self, event: CallEventCreate,) -> None:
+    def _validate_event(self, event: CallEventCreate) -> None:
         self._validate_timestamp(event.started_at)
         self._validate_timestamp(event.answered_at)
         self._validate_timestamp(event.ended_at)
 
-        # CSAT score requires a collected response
         if event.csat_score is not None and not event.csat_collected:
             raise ValidationError("csat_score requires csat_collected=true")
 
-        # A collected CSAT response must contain a score
         if event.csat_collected and event.csat_score is None:
             raise ValidationError("csat_collected requires csat_score")
 
-    def _validate_timestamp(self, value: Optional[datetime],) -> None:
+    def _validate_timestamp(self, value: Optional[datetime]) -> None:
         if value is None:
             return
 
         if value.tzinfo is None or value.utcoffset() is None:
             raise ValidationError("timestamps must be timezone-aware")
 
-    def _to_utc(self, value: Optional[datetime],) -> Optional[datetime]:
+    def _to_utc(self, value: Optional[datetime]) -> Optional[datetime]:
         if value is None:
             return None
 
