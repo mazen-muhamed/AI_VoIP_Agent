@@ -95,7 +95,7 @@ class CallsService:
 
         return value.astimezone(timezone.utc)
 
-        def _calculate_wait_seconds(self, started_at: datetime, answered_at: Optional[datetime]) -> Optional[int]:
+    def _calculate_wait_seconds(self, started_at: datetime, answered_at: Optional[datetime]) -> Optional[int]:
         if answered_at is None:
             return None
 
