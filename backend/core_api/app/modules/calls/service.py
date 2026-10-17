@@ -95,13 +95,13 @@ class CallsService:
 
         return value.astimezone(timezone.utc)
 
-    def _calculate_wait_seconds(self, started_at: datetime, answered_at: Optional[datetime],) -> Optional[int]:
+    def _calculate_wait_seconds(self, started_at: datetime, answered_at: Optional[datetime]) -> Optional[int]:
         if answered_at is None:
             return None
 
         return max(0, int((answered_at - started_at).total_seconds()),)
 
-    def _calculate_talk_seconds(self, answered_at: Optional[datetime], ended_at: Optional[datetime],) -> Optional[int]:
+    def _calculate_talk_seconds(self, answered_at: Optional[datetime], ended_at: Optional[datetime]) -> Optional[int]:
         if answered_at is None or ended_at is None:
             return None
 
