@@ -15,6 +15,8 @@ async def ingest_call_event(
     allowed_tenant_id: UUID = Depends(verify_ingest_key),
     service: CallsService = Depends(get_calls_service),
 ) -> CallEventResponse:
+    if event.tenant_id != allowed_tenant_id:
+        raise ForbiddenError("Ingest key is not authorized for this tenant")
 
     call, created = await service.process_event(event, allowed_tenant_id=allowed_tenant_id,)
 

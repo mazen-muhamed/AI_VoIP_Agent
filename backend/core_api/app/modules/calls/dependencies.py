@@ -20,7 +20,7 @@ async def verify_ingest_key(x_ingest_key: str | None = Header(default=None),) ->
 
     try:
         return UUID(settings.CALLS_INGEST_TENANT_ID)
-    except ValueError:   
+    except ValueError:
         raise UnauthorizedError("Invalid CALLS_INGEST_TENANT_ID configuration")
 
 
